@@ -46,7 +46,7 @@ public class Server {
 
     // Run the server.
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(1234);
+        ServerSocket serverSocket = new ServerSocket(1234);     // Assuming ServerSocket gets IP address of local machine
         Server server = new Server(serverSocket);
         server.startServer();
     }

@@ -93,11 +93,30 @@ public class Client {
         System.out.print("Enter your username for the group chat: ");
         String username = scanner.nextLine();
         // Create a socket to connect to the server.
-        Socket socket = new Socket("localhost", 1234);
+
+        // Keep prompting for a valid IP address, continue when successfully connected.
+        boolean attempt = true;
+        Socket socket = null;
+        while(attempt) {
+            try {
+                System.out.print("Enter the IP address of the server: ");
+            String ipAddress = scanner.nextLine();
+
+            System.out.println("Connecting to " + ipAddress + "...");
+            socket = new Socket(ipAddress, 1234);
+
+            // If the connection is successful, break out of the loop.
+            attempt = false;
+
+            } catch (IOException e) {
+                System.out.println("Invalid IP address. Please try again.");
+            }
+        }
 
         // Pass the socket and give the client a username.
         Client client = new Client(socket, username);
         // Infinite loop to read and send messages.
+        System.out.println("Connection successful!");
         client.listenForMessage();
         client.sendMessage();
     }
