@@ -1,5 +1,7 @@
 package GroupChatApplication;
 
+import javafx.scene.layout.VBox;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
@@ -27,11 +29,32 @@ public class Client {
         }
     }
 
+
+    // Listening for a message is blocking so need a separate thread for that.
+    public void listenForMessage() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msgFromGroupChat;
+                // While there is still a connection with the server, continue to listen for messages on a separate thread.
+                while (socket.isConnected()) {
+                    try {
+                        // Get the messages sent from other users and print it to the console.
+                        msgFromGroupChat = bufferedReader.readLine();
+                        System.out.println(msgFromGroupChat);
+                    } catch (IOException e) {
+                        closeEverything(socket, bufferedReader, bufferedWriter);
+                    }
+                }
+            }
+        }).start();
+    }
+
     // Sending a message isn't blocking and can be done without spawning a thread, unlike waiting for a message.
-    public void sendMessage() {
+    public void sendMessageToServer(String messageToServer) {
         try {
             // Initially send the username of the client.
-            bufferedWriter.write(username);
+            bufferedWriter.write(messageToServer);
             bufferedWriter.newLine();
             bufferedWriter.flush();
             // Create a scanner for user input.
@@ -48,20 +71,20 @@ public class Client {
         }
     }
 
-    // Listening for a message is blocking so need a separate thread for that.
-    public void listenForMessage() {
+    // receiveMessageFromClient
+    //**************************************
+    public void receiveMessageFromServer(VBox vBox) {
         new Thread(new Runnable() {
             @Override
-            public void run() {
-                String msgFromGroupChat;
-                // While there is still a connection with the server, continue to listen for messages on a separate thread.
-                while (socket.isConnected()) {
-                    try {
-                        // Get the messages sent from other users and print it to the console.
-                        msgFromGroupChat = bufferedReader.readLine();
-                        System.out.println(msgFromGroupChat);
-                    } catch (IOException e) {
-                        closeEverything(socket, bufferedReader, bufferedWriter);
+            public void run() { // listen to messages while client is connected
+                while (socket.isConnected()){
+                    try{
+                        String messageFromServer = bufferedReader.readLine();
+                        ServerController.addLabel(messageFromServer, vBox);
+                    } catch(IOException e){
+                        e.printStackTrace();
+                        System.out.println("Error receiving mesasge from client");
+                        break;
                     }
                 }
             }
@@ -117,7 +140,6 @@ public class Client {
         Client client = new Client(socket, username);
         // Infinite loop to read and send messages.
         System.out.println("Connection successful!");
-        client.listenForMessage();
-        client.sendMessage();
+
     }
 }
