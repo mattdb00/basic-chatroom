@@ -9,6 +9,7 @@ import java.net.Socket;
 public class Server {
 
     private final ServerSocket serverSocket;
+    private final static int port = 6000;
 
     public Server(ServerSocket serverSocket) {
         this.serverSocket = serverSocket;
@@ -18,13 +19,12 @@ public class Server {
         try {
             // Infinite loop to continuously look for clients wanting to establish connection
             while (!serverSocket.isClosed()) {
-
+                System.out.println("Waiting on a connection to a client...");
                 // This socket is closed in ClientHandler class
                 Socket socket = serverSocket.accept();
                 System.out.println("A new client has connected!");
                 ClientHandler clientHandler = new ClientHandler(socket);
                 Thread thread = new Thread(clientHandler);
-
                 // Call run() method of ClientHandler to start a new thread to handle each client
                 thread.start();
             }
@@ -46,7 +46,7 @@ public class Server {
 
     // Run the server.
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(1234);     // Assuming ServerSocket gets IP address of local machine
+        ServerSocket serverSocket = new ServerSocket(port);     // Assuming ServerSocket gets IP address of local machine
         Server server = new Server(serverSocket);
         server.startServer();
     }

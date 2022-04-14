@@ -27,7 +27,8 @@ public class ClientHandler implements Runnable {
             this.clientUsername = bufferedReader.readLine();
             // Add the new client handler to the array so they can receive messages from others.
             clientHandlers.add(this);
-            broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
+
+            //broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
         } catch (IOException e) {
             // Close everything more gracefully.
             closeEverything(socket, bufferedReader, bufferedWriter);
@@ -45,6 +46,7 @@ public class ClientHandler implements Runnable {
             try {
                 // Read what the client sent and then send it to every other client.
                 messageFromClient = bufferedReader.readLine();
+                System.out.println("Server got this message: " + messageFromClient);
                 broadcastMessage(messageFromClient);
             } catch (IOException e) {
                 // Close everything gracefully.
@@ -81,7 +83,7 @@ public class ClientHandler implements Runnable {
 
     // Helper method to close everything so you don't have to repeat yourself.
     public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
-        // The client disconnected or an error occurred so remove them from the list so no message is broadcasted.
+        // The client disconnected or an error occurred so remove them from the list so no message is broadcast.
         removeClientHandler();
         try {
             if (bufferedReader != null) {

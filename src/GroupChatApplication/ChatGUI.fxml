@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="554.0" prefWidth="830.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GroupChatApplication.ChatGUI">
+   <children>
+      <AnchorPane prefHeight="554.0" prefWidth="830.0">
+         <children>
+            <Button fx:id="sendButton" layoutX="656.0" layoutY="387.0" mnemonicParsing="false" onMouseClicked="#btSendMessage" prefHeight="106.0" prefWidth="132.0" text="SEND" />
+            <TextArea fx:id="currentMessage" layoutX="38.0" layoutY="340.0" onKeyReleased="#sendTheMessage" prefHeight="200.0" prefWidth="584.0" />
+            <ScrollPane layoutX="22.0" layoutY="14.0">
+               <content>
+                  <TextArea fx:id="allMessages" editable="false" prefHeight="307.0" prefWidth="790.0" />
+               </content>
+            </ScrollPane>
+         </children>
+      </AnchorPane>
+   </children>
+</AnchorPane>
