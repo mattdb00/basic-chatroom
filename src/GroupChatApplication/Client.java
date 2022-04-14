@@ -2,7 +2,8 @@ package GroupChatApplication;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.Scanner;
+
+import javafx.scene.image.Image;
 
 // Each client sends messages to the server & the server spawns a thread to communicate with the client.
 // Each communication with a client is added to an array list so any message sent gets sent to every other client
@@ -10,72 +11,89 @@ import java.util.Scanner;
 
 public class Client {
 
-    // A client has a socket to connect to the server and a reader and writer to receive and send messages
-    private Socket socket;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
-    private String username;
+    private Socket socket; // Socket for the client to connect to
+    private ObjectOutputStream dOut; // Output stream
+    private ObjectInputStream dIn; // Input stream
+    private String username; // Username
+    private ChatBoxController controller; // Applicable controller.
 
-    public Client(Socket socket, String username) {
+    /**
+     * Creates a client with a specified controller, socket, and username.
+     * 
+     * @param controller JavaFX controller to send and display messages.
+     * @param socket     A socket
+     * @param username   A username for the client.
+     */
+    public Client(ChatBoxController controller, Socket socket, String username) {
         try {
+            this.controller = controller;
             this.socket = socket;
             this.username = username;
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.bufferedWriter= new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            this.dOut = new ObjectOutputStream(socket.getOutputStream());
+            this.dIn = new ObjectInputStream(socket.getInputStream());
+
         } catch (IOException e) {
-            closeEverything(socket, bufferedReader, bufferedWriter);
+            closeEverything(socket, dIn, dOut);
         }
     }
 
-    // Sending a message isn't blocking and can be done without spawning a thread, unlike waiting for a message.
-    public void sendMessage() {
+    /**
+     * Send a message with optional image over the ObjectOutputStream.
+     * 
+     * @param msg A message to be sent.
+     */
+    public void sendMessage(String msg, Image image) {
         try {
-            // Initially send the username of the client.
-            bufferedWriter.write(username);
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
-            // Create a scanner for user input.
-            Scanner scanner = new Scanner(System.in);
-            // While there is still a connection with the server, continue to scan the terminal and then send the message.
-            while (socket.isConnected()) {
-                String messageToSend = scanner.nextLine();
-                bufferedWriter.write(username + ": " + messageToSend);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-            }
+            Message messageToSend = new Message(username, msg, image);
+            dOut.writeObject(messageToSend);
+            dOut.flush();
+
         } catch (IOException e) {
-            closeEverything(socket, bufferedReader, bufferedWriter);
+            closeEverything(socket, dIn, dOut);
         }
     }
 
-    // Listening for a message is blocking so need a separate thread for that.
+    /**
+     * Listen for a message over the socket to display within the JavaFX
+     * application.
+     */
     public void listenForMessage() {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                String msgFromGroupChat;
-                // While there is still a connection with the server, continue to listen for messages on a separate thread.
+
+                // While there is still a connection with the server, continue to listen for
+                // messages on a separate thread.
                 while (socket.isConnected()) {
                     try {
-                        // Get the messages sent from other users and print it to the console.
-                        msgFromGroupChat = bufferedReader.readLine();
-                        System.out.println(msgFromGroupChat);
-                    } catch (IOException e) {
-                        closeEverything(socket, bufferedReader, bufferedWriter);
+                        Message receivedMsg = (Message) dIn.readObject();
+
+                        if (receivedMsg instanceof Message) {
+                            controller.displayMessage(receivedMsg);
+                        }
+
+                    } catch (Exception e) {
+                        //closeEverything(socket, dIn, dOut);
                     }
                 }
             }
         }).start();
     }
 
-    // Helper method to close everything so you don't have to repeat yourself.
-    public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+    /**
+     * Helper method to close everything.
+     * 
+     * @param socket
+     * @param dIn
+     * @param dOut
+     */
+    public void closeEverything(Socket socket, ObjectInputStream dIn, ObjectOutputStream dOut) {
         try {
-            if (bufferedReader != null) {
-                bufferedReader.close();
+            if (dIn != null) {
+                dIn.close();
             }
-            if (bufferedWriter != null) {
-                bufferedWriter.close();
+            if (dOut != null) {
+                dOut.close();
             }
             if (socket != null) {
                 socket.close();
@@ -85,39 +103,12 @@ public class Client {
         }
     }
 
-    // Run the client.
-    public static void main(String[] args) throws IOException {
-
-        // Get a username for the user and a socket connection.
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter your username for the group chat: ");
-        String username = scanner.nextLine();
-        // Create a socket to connect to the server.
-
-        // Keep prompting for a valid IP address, continue when successfully connected.
-        boolean attempt = true;
-        Socket socket = null;
-        while(attempt) {
-            try {
-                System.out.print("Enter the IP address of the server: ");
-            String ipAddress = scanner.nextLine();
-
-            System.out.println("Connecting to " + ipAddress + "...");
-            socket = new Socket(ipAddress, 1234);
-
-            // If the connection is successful, break out of the loop.
-            attempt = false;
-
-            } catch (IOException e) {
-                System.out.println("Invalid IP address. Please try again.");
-            }
-        }
-
-        // Pass the socket and give the client a username.
-        Client client = new Client(socket, username);
-        // Infinite loop to read and send messages.
-        System.out.println("Connection successful!");
-        client.listenForMessage();
-        client.sendMessage();
+    /**
+     * Gets the username associated with the client.
+     * 
+     * @return String
+     */
+    public String getUsername() {
+        return username;
     }
 }

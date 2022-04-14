@@ -3,6 +3,7 @@ package GroupChatApplication;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 
 // A server listens for and establishes connections between clients using a server socket.
 
@@ -14,7 +15,7 @@ public class Server {
         this.serverSocket = serverSocket;
     }
 
-    public void startServer() {
+    public void startServer() throws ClassNotFoundException {
         try {
             // Infinite loop to continuously look for clients wanting to establish connection
             while (!serverSocket.isClosed()) {
@@ -45,10 +46,26 @@ public class Server {
     }
 
     // Run the server.
-    public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(1234);     // Assuming ServerSocket gets IP address of local machine
-        Server server = new Server(serverSocket);
-        server.startServer();
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        String systemIPAddress ="";
+
+        try {
+            // Amazon will return the IP address of this machine when visiting this link.
+            URL url = new URL("https://checkip.amazonaws.com/");
+
+            BufferedReader sc = new BufferedReader(new InputStreamReader(url.openStream()));
+            systemIPAddress = sc.readLine().trim();
+
+            // Start the server on unassigned port 60.
+            ServerSocket serverSocket = new ServerSocket(60);
+            Server server = new Server(serverSocket);
+
+            System.out.println("The server has started successfully and can be connected to at " + systemIPAddress + ":60");
+            server.startServer();
+            
+        } catch (Exception e) {
+            System.out.println("Error: Unable to get IP address of this machine.");
+        }
     }
 
 }

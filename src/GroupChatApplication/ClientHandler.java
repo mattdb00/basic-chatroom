@@ -13,62 +13,76 @@ public class ClientHandler implements Runnable {
 
     // Socket for a connection, buffer reader and writer for receiving and sending data respectively.
     private Socket socket;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
+    private ObjectOutputStream dOut;
+    private ObjectInputStream dIn;
     private String clientUsername;
 
-    // Creating the client handler from the socket the server passes.
-    public ClientHandler(Socket socket) {
+    /**
+     * Create the client handler from the socket the server passes.
+     * @param socket Socket containing IP address and port number.
+     * @throws ClassNotFoundException
+     */
+    public ClientHandler(Socket socket) throws ClassNotFoundException {
         try {
             this.socket = socket;
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            this.bufferedWriter= new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            // When a client connects their username is sent.
-            this.clientUsername = bufferedReader.readLine();
+            this.dOut = new ObjectOutputStream(socket.getOutputStream());
+            this.dIn = new ObjectInputStream(socket.getInputStream());
+            this.clientUsername = ((Message) dIn.readObject()).username;
+
             // Add the new client handler to the array so they can receive messages from others.
             clientHandlers.add(this);
-            broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
+            
+            broadcastMessage(new Message("Server", clientUsername + " has entered the chat!", null));
         } catch (IOException e) {
             // Close everything more gracefully.
-            closeEverything(socket, bufferedReader, bufferedWriter);
+            closeEverything(socket, dIn, dOut);
         }
     }
 
-    // Everything in this method is run on a separate thread. We want to listen for messages
-    // on a separate thread because listening (bufferedReader.readLine()) is a blocking operation.
-    // A blocking operation means the caller waits for the callee to finish its operation.
+    /**
+     * Everything in this method is run on a separate thread. We want to listen for messages
+     * on a separate thread because listening (bufferedReader.readLine()) is a blocking operation.
+     * A blocking operation means the caller waits for the callee to finish its operation.
+     */
     @Override
     public void run() {
-        String messageFromClient;
         // Continue to listen for messages while a connection with the client is still established.
         while (socket.isConnected()) {
             try {
                 // Read what the client sent and then send it to every other client.
-                messageFromClient = bufferedReader.readLine();
-                broadcastMessage(messageFromClient);
+                Message receivedMsg = (Message) dIn.readObject();
+
+                if(receivedMsg instanceof Message)
+                    broadcastMessage(receivedMsg);
             } catch (IOException e) {
                 // Close everything gracefully.
-                closeEverything(socket, bufferedReader, bufferedWriter);
+                closeEverything(socket, dIn, dOut);
+                break;
+            } catch (ClassNotFoundException e) {
+                // Close everything gracefully.
+                closeEverything(socket, dIn, dOut);
                 break;
             }
         }
     }
 
-    // Send a message through each client handler thread so that everyone gets the message.
-    // Basically each client handler is a connection to a client. So for any message that
-    // is received, loop through each connection and send it down it.
-    public void broadcastMessage(String messageToSend) {
+    /**
+     * Send a message through each client handler thread so that everyone gets the message.
+     * Basically each client handler is a connection to the client. So far any message that
+     * is received, loop through each connection and send it down it.
+     * @param messageToSend
+     */
+    public void broadcastMessage(Message messageToSend) {
         for (ClientHandler clientHandler : clientHandlers) {
             try {
                 // You don't want to broadcast the message to the user who sent it.
                 if (!clientHandler.clientUsername.equals(clientUsername)) {
-                    clientHandler.bufferedWriter.write(messageToSend);
-                    clientHandler.bufferedWriter.newLine();
-                    clientHandler.bufferedWriter.flush();
+                    clientHandler.dOut.writeObject(messageToSend);
+                    clientHandler.dOut.flush();
                 }
             } catch (IOException e) {
                 // Gracefully close everything.
-                closeEverything(socket, bufferedReader, bufferedWriter);
+                closeEverything(socket, dIn, dOut);
             }
         }
     }
@@ -76,19 +90,19 @@ public class ClientHandler implements Runnable {
     // If the client disconnects for any reason remove them from the list so a message isn't sent down a broken connection.
     public void removeClientHandler() {
         clientHandlers.remove(this);
-        broadcastMessage("SERVER: " + clientUsername + " has left the chat!");
+        broadcastMessage(new Message("Server", clientUsername + " has left the chat!", null));
     }
 
     // Helper method to close everything so you don't have to repeat yourself.
-    public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+    public void closeEverything(Socket socket, ObjectInputStream dIn, ObjectOutputStream dOut) {
         // The client disconnected or an error occurred so remove them from the list so no message is broadcasted.
         removeClientHandler();
         try {
-            if (bufferedReader != null) {
-                bufferedReader.close();
+            if (dIn != null) {
+                dIn.close();
             }
-            if (bufferedWriter != null) {
-                bufferedWriter.close();
+            if (dOut != null) {
+                dOut.close();
             }
             if (socket != null) {
                 socket.close();
